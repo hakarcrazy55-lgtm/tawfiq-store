@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>محلات توفيق محمد - النظام المحاسبي</title>
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
 :root{
@@ -217,6 +220,7 @@ hr.section-divider{border:none;border-top:1px dashed var(--gray-light);margin:16
   <div class="topbar" id="topbar-el">
     <h2 id="page-title">لوحة التحكم</h2>
     <div class="topbar-right">
+      <span id="sync-badge" style="font-size:12px;padding:5px 12px;border-radius:20px;background:#fef3c7;color:#b45309;cursor:pointer;" onclick="openModal('modal-firebase')">☁️ إعداد المزامنة</span>
       <span class="date-badge" id="current-date"></span>
       <button class="btn btn-outline btn-sm" onclick="window.print()">🖨️ طباعة</button>
     </div>
@@ -862,6 +866,57 @@ hr.section-divider{border:none;border-top:1px dashed var(--gray-light);margin:16
   </div>
 </div>
 
+<!-- ===== FIREBASE SETUP MODAL ===== -->
+<div class="modal-overlay" id="modal-firebase">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-header">
+      <h3>☁️ إعداد المزامنة السحابية</h3>
+      <button class="modal-close" onclick="closeModal('modal-firebase')">✕</button>
+    </div>
+    <div class="card-body" style="padding:24px;">
+      <div id="fb-status-box" style="margin-bottom:16px;padding:12px 16px;border-radius:8px;background:#f0fdf4;border:1px solid #86efac;color:#15803d;display:none;"></div>
+
+      <p style="margin-bottom:16px;line-height:1.8;color:#374151;">
+        لكي تتزامن البيانات بين كل الأجهزة، نحتاج ربط النظام بـ <strong>Firebase</strong> (مجاني تماماً).<br>
+        اتبع الخطوات التالية مرة واحدة فقط:
+      </p>
+
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin-bottom:20px;font-size:13px;line-height:2;">
+        <b>📋 خطوات الإعداد (مرة واحدة):</b><br>
+        1️⃣ اذهب إلى: <a href="https://console.firebase.google.com" target="_blank" style="color:#1a56a0;">console.firebase.google.com</a><br>
+        2️⃣ اضغط <b>"Create a project"</b> → اختر اسماً مثل <b>tawfiq-store</b><br>
+        3️⃣ أوقف Google Analytics → اضغط <b>Create project</b><br>
+        4️⃣ اضغط على أيقونة <b>&lt;/&gt;</b> (Web app) → سجّل التطبيق<br>
+        5️⃣ انسخ الـ <b>firebaseConfig</b> والصقها أدناه<br>
+        6️⃣ من القائمة الجانبية → <b>Build → Firestore Database</b> → أنشئه في <b>Test mode</b>
+      </div>
+
+      <div class="form-group" style="margin-bottom:16px;">
+        <label>الصق هنا كود firebaseConfig كاملاً (من الخطوة 5):</label>
+        <textarea id="fb-config-input" rows="8" style="font-family:monospace;font-size:12px;direction:ltr;padding:10px;border:1px solid #d1d5db;border-radius:8px;width:100%;resize:vertical;" placeholder='const firebaseConfig = {
+  apiKey: "AIza...",
+  authDomain: "tawfiq-store-xxxx.firebaseapp.com",
+  projectId: "tawfiq-store-xxxx",
+  storageBucket: "tawfiq-store-xxxx.appspot.com",
+  messagingSenderId: "123456789",
+  appId: "1:123456789:web:abcdef"
+};'></textarea>
+      </div>
+
+      <div class="btn-group">
+        <button class="btn btn-primary" onclick="connectFirebase()">🔗 ربط وتزامن الآن</button>
+        <button class="btn btn-outline" onclick="closeModal('modal-firebase')">إغلاق</button>
+      </div>
+
+      <div id="fb-saved-info" style="margin-top:16px;display:none;">
+        <hr style="margin:16px 0;">
+        <p style="color:#6b7280;font-size:12px;">✅ تم الربط مسبقاً بمشروع: <strong id="fb-project-id-display"></strong></p>
+        <button class="btn btn-danger btn-sm" style="margin-top:8px;" onclick="disconnectFirebase()">⚠️ قطع الاتصال وحذف الإعداد</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ===== INVOICE MODAL ===== -->
 <div class="modal-overlay inv-modal" id="modal-invoice">
   <div class="modal" style="max-width:800px;border-radius:4px;overflow:hidden;">
@@ -1163,11 +1218,149 @@ let DB = {
   nextSaleNum:1001
 };
 
-function loadDB(){const d=localStorage.getItem('tawfiq_db');if(d)DB=JSON.parse(d);}
-function saveDB(){localStorage.setItem('tawfiq_db',JSON.stringify(DB));}
+// ===== FIREBASE CLOUD SYNC =====
+let fbApp = null, fbDB = null, fbUnsubscribe = null;
+const FB_DOC = 'stores/main';
+
+function setSyncBadge(state){
+  const b = document.getElementById('sync-badge');
+  if(!b) return;
+  const states = {
+    connected:  {bg:'#dcfce7', color:'#15803d', text:'☁️ متصل - بيانات مشتركة'},
+    syncing:    {bg:'#dbeafe', color:'#1d4ed8', text:'🔄 جاري التزامن...'},
+    offline:    {bg:'#fee2e2', color:'#b91c1c', text:'⚠️ بدون اتصال'},
+    setup:      {bg:'#fef3c7', color:'#b45309', text:'☁️ إعداد المزامنة'}
+  };
+  const s = states[state] || states.setup;
+  b.style.background = s.bg;
+  b.style.color = s.color;
+  b.textContent = s.text;
+}
+
+function loadDB(){
+  const d = localStorage.getItem('tawfiq_db');
+  if(d) DB = JSON.parse(d);
+}
+
+function saveDB(){
+  localStorage.setItem('tawfiq_db', JSON.stringify(DB));
+  if(fbDB){
+    setSyncBadge('syncing');
+    fbDB.doc(FB_DOC).set(JSON.parse(JSON.stringify(DB)))
+      .then(()=>setSyncBadge('connected'))
+      .catch(e=>{ console.warn('Firestore save error:',e); setSyncBadge('offline'); });
+  }
+}
+
+function refreshAllViews(){
+  updateDashboard();
+  renderSales(); renderPurchases(); renderInventory();
+  renderExpenses(); renderCustomers(); renderSuppliers();
+  renderCashbox(); loadSettings();
+  refreshInvList(); populateCustomerDropdown(); populateSupplierDropdown(); populateCashDropdowns();
+}
+
+function startFirestoreListener(){
+  if(fbUnsubscribe) fbUnsubscribe();
+  fbUnsubscribe = fbDB.doc(FB_DOC).onSnapshot(snap=>{
+    if(snap.exists){
+      const remote = snap.data();
+      DB = remote;
+      localStorage.setItem('tawfiq_db', JSON.stringify(DB));
+      refreshAllViews();
+      setSyncBadge('connected');
+    }
+  }, err=>{ console.warn('Firestore listener error:',err); setSyncBadge('offline'); });
+}
+
+function connectFirebase(){
+  const raw = document.getElementById('fb-config-input').value.trim();
+  let cfg = null;
+  try {
+    // extract object literal from pasted code
+    const match = raw.match(/\{[\s\S]*\}/);
+    if(!match) throw new Error('لم يتم العثور على الكود');
+    cfg = eval('(' + match[0] + ')');
+    if(!cfg.projectId) throw new Error('projectId غير موجود');
+  } catch(e){
+    const box = document.getElementById('fb-status-box');
+    box.style.background='#fef2f2'; box.style.border='1px solid #fca5a5'; box.style.color='#b91c1c';
+    box.textContent = '❌ خطأ في الكود: ' + e.message;
+    box.style.display='block'; return;
+  }
+  localStorage.setItem('tawfiq_fb_config', JSON.stringify(cfg));
+  initFirebase(cfg, true);
+}
+
+function initFirebase(cfg, showFeedback){
+  try {
+    if(fbApp) { try{ fbApp.delete(); }catch(e){} }
+    fbApp = firebase.initializeApp(cfg, 'tawfiq-app-'+Date.now());
+    fbDB = fbApp.firestore();
+    setSyncBadge('syncing');
+
+    // First fetch then listen
+    fbDB.doc(FB_DOC).get().then(snap=>{
+      if(snap.exists){
+        DB = snap.data();
+        localStorage.setItem('tawfiq_db', JSON.stringify(DB));
+        refreshAllViews();
+      } else {
+        // First time: upload current local data
+        fbDB.doc(FB_DOC).set(JSON.parse(JSON.stringify(DB)));
+      }
+      startFirestoreListener();
+      setSyncBadge('connected');
+      if(showFeedback){
+        const box = document.getElementById('fb-status-box');
+        box.style.background='#f0fdf4'; box.style.border='1px solid #86efac'; box.style.color='#15803d';
+        box.textContent = '✅ تم الربط بنجاح! البيانات الآن مشتركة بين كل الأجهزة.';
+        box.style.display='block';
+        document.getElementById('fb-project-id-display').textContent = cfg.projectId;
+        document.getElementById('fb-saved-info').style.display='block';
+        document.getElementById('fb-config-input').value = '';
+      }
+    }).catch(e=>{
+      setSyncBadge('offline');
+      if(showFeedback){
+        const box = document.getElementById('fb-status-box');
+        box.style.background='#fef2f2'; box.style.border='1px solid #fca5a5'; box.style.color='#b91c1c';
+        box.textContent = '❌ فشل الاتصال: ' + e.message + '\nتأكد من إنشاء Firestore Database في مشروعك.';
+        box.style.display='block';
+      }
+    });
+  } catch(e){
+    setSyncBadge('offline');
+    if(showFeedback) alert('خطأ: '+e.message);
+  }
+}
+
+function disconnectFirebase(){
+  if(!confirm('هل تريد قطع الاتصال بالسحابة؟ البيانات ستبقى محفوظة محلياً فقط.')) return;
+  if(fbUnsubscribe) fbUnsubscribe();
+  if(fbApp) { try{ fbApp.delete(); }catch(e){} }
+  fbApp = null; fbDB = null; fbUnsubscribe = null;
+  localStorage.removeItem('tawfiq_fb_config');
+  setSyncBadge('setup');
+  document.getElementById('fb-saved-info').style.display='none';
+  document.getElementById('fb-status-box').style.display='none';
+  closeModal('modal-firebase');
+}
 
 // ===== INIT =====
 loadDB();
+// Auto-connect if config was saved before
+(function(){
+  const saved = localStorage.getItem('tawfiq_fb_config');
+  if(saved){
+    try{
+      const cfg = JSON.parse(saved);
+      document.getElementById('fb-project-id-display').textContent = cfg.projectId;
+      document.getElementById('fb-saved-info').style.display='block';
+      initFirebase(cfg, false);
+    }catch(e){ setSyncBadge('setup'); }
+  }
+})();
 document.getElementById('current-date').textContent = new Date().toLocaleDateString('ar-LY',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
 
 // Set today's date in all date inputs
