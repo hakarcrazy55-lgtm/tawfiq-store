@@ -4,9 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>محلات توفيق محمد - النظام المحاسبي</title>
-<!-- Firebase SDK -->
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
 :root{
@@ -877,30 +874,21 @@ hr.section-divider{border:none;border-top:1px dashed var(--gray-light);margin:16
       <div id="fb-status-box" style="margin-bottom:16px;padding:12px 16px;border-radius:8px;background:#f0fdf4;border:1px solid #86efac;color:#15803d;display:none;"></div>
 
       <p style="margin-bottom:16px;line-height:1.8;color:#374151;">
-        لكي تتزامن البيانات بين كل الأجهزة، نحتاج ربط النظام بـ <strong>Firebase</strong> (مجاني تماماً).<br>
-        اتبع الخطوات التالية مرة واحدة فقط:
+        النظام جاهز للمزامنة السحابية عبر <strong>GitHub</strong>. أدخل التوكن أدناه مرة واحدة فقط وستتزامن البيانات بين كل الأجهزة تلقائياً.
       </p>
 
-      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin-bottom:20px;font-size:13px;line-height:2;">
-        <b>📋 خطوات الإعداد (مرة واحدة):</b><br>
-        1️⃣ اذهب إلى: <a href="https://console.firebase.google.com" target="_blank" style="color:#1a56a0;">console.firebase.google.com</a><br>
-        2️⃣ اضغط <b>"Create a project"</b> → اختر اسماً مثل <b>tawfiq-store</b><br>
-        3️⃣ أوقف Google Analytics → اضغط <b>Create project</b><br>
-        4️⃣ اضغط على أيقونة <b>&lt;/&gt;</b> (Web app) → سجّل التطبيق<br>
-        5️⃣ انسخ الـ <b>firebaseConfig</b> والصقها أدناه<br>
-        6️⃣ من القائمة الجانبية → <b>Build → Firestore Database</b> → أنشئه في <b>Test mode</b>
+      <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:16px;margin-bottom:20px;font-size:13px;line-height:2.2;">
+        <b>🔑 كيف تحصل على التوكن:</b><br>
+        1️⃣ اذهب إلى: <a href="https://github.com/settings/tokens/new" target="_blank" style="color:#1a56a0;font-weight:bold;">github.com/settings/tokens/new</a><br>
+        2️⃣ في <b>"Note"</b> اكتب: <code style="background:#e0f2fe;padding:2px 6px;border-radius:4px;">tawfiq-store</code><br>
+        3️⃣ في <b>"Expiration"</b> اختر: <b>No expiration</b><br>
+        4️⃣ ضع علامة ✅ على <b>gist</b> فقط<br>
+        5️⃣ اضغط <b>"Generate token"</b> → انسخ التوكن والصقه هنا
       </div>
 
       <div class="form-group" style="margin-bottom:16px;">
-        <label>الصق هنا كود firebaseConfig كاملاً (من الخطوة 5):</label>
-        <textarea id="fb-config-input" rows="8" style="font-family:monospace;font-size:12px;direction:ltr;padding:10px;border:1px solid #d1d5db;border-radius:8px;width:100%;resize:vertical;" placeholder='const firebaseConfig = {
-  apiKey: "AIza...",
-  authDomain: "tawfiq-store-xxxx.firebaseapp.com",
-  projectId: "tawfiq-store-xxxx",
-  storageBucket: "tawfiq-store-xxxx.appspot.com",
-  messagingSenderId: "123456789",
-  appId: "1:123456789:web:abcdef"
-};'></textarea>
+        <label>الصق التوكن هنا (يبدأ بـ ghp_):</label>
+        <textarea id="fb-config-input" rows="3" style="font-family:monospace;font-size:13px;direction:ltr;padding:10px;border:1px solid #d1d5db;border-radius:8px;width:100%;resize:none;" placeholder="ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"></textarea>
       </div>
 
       <div class="btn-group">
@@ -910,7 +898,7 @@ hr.section-divider{border:none;border-top:1px dashed var(--gray-light);margin:16
 
       <div id="fb-saved-info" style="margin-top:16px;display:none;">
         <hr style="margin:16px 0;">
-        <p style="color:#6b7280;font-size:12px;">✅ تم الربط مسبقاً بمشروع: <strong id="fb-project-id-display"></strong></p>
+        <p style="color:#6b7280;font-size:12px;">✅ التوكن محفوظ — البيانات تتزامن تلقائياً بين كل الأجهزة</p>
         <button class="btn btn-danger btn-sm" style="margin-top:8px;" onclick="disconnectFirebase()">⚠️ قطع الاتصال وحذف الإعداد</button>
       </div>
     </div>
@@ -1215,26 +1203,31 @@ let DB = {
   sales:[],purchases:[],inventory:[],expenses:[],customers:[],suppliers:[],
   cashTx:[],
   settings:{name:'محلات توفيق محمد',phone:'',address:'',email:'',tax:'',currency:'د.ل'},
-  nextSaleNum:1001
+  nextSaleNum:1001, nextPurNum:2001
 };
 
-// ===== FIREBASE CLOUD SYNC =====
-let fbApp = null, fbDB = null, fbUnsubscribe = null;
-const FB_DOC = 'stores/main';
+// ===== GITHUB GIST CLOUD SYNC =====
+const GIST_ID = 'a26817e33fa03ba54b73f7349120bf07';
+const GIST_FILE = 'db.json';
+const GIST_API = 'https://api.github.com/gists/' + GIST_ID;
+let syncTimer = null;
+let isSyncing = false;
 
 function setSyncBadge(state){
   const b = document.getElementById('sync-badge');
   if(!b) return;
   const states = {
-    connected:  {bg:'#dcfce7', color:'#15803d', text:'☁️ متصل - بيانات مشتركة'},
-    syncing:    {bg:'#dbeafe', color:'#1d4ed8', text:'🔄 جاري التزامن...'},
-    offline:    {bg:'#fee2e2', color:'#b91c1c', text:'⚠️ بدون اتصال'},
-    setup:      {bg:'#fef3c7', color:'#b45309', text:'☁️ إعداد المزامنة'}
+    connected: {bg:'#dcfce7',color:'#15803d',text:'☁️ متصل - بيانات مشتركة'},
+    syncing:   {bg:'#dbeafe',color:'#1d4ed8',text:'🔄 جاري التزامن...'},
+    offline:   {bg:'#fee2e2',color:'#b91c1c',text:'⚠️ غير متصل - بيانات محلية'},
+    setup:     {bg:'#fef3c7',color:'#b45309',text:'☁️ اضغط لتفعيل المزامنة'}
   };
-  const s = states[state] || states.setup;
-  b.style.background = s.bg;
-  b.style.color = s.color;
-  b.textContent = s.text;
+  const s = states[state]||states.setup;
+  b.style.background=s.bg; b.style.color=s.color; b.textContent=s.text;
+}
+
+function getGistToken(){
+  return localStorage.getItem('tawfiq_gist_token')||'';
 }
 
 function loadDB(){
@@ -1244,11 +1237,56 @@ function loadDB(){
 
 function saveDB(){
   localStorage.setItem('tawfiq_db', JSON.stringify(DB));
-  if(fbDB){
-    setSyncBadge('syncing');
-    fbDB.doc(FB_DOC).set(JSON.parse(JSON.stringify(DB)))
-      .then(()=>setSyncBadge('connected'))
-      .catch(e=>{ console.warn('Firestore save error:',e); setSyncBadge('offline'); });
+  // Debounce cloud sync: wait 1.5s after last change
+  clearTimeout(syncTimer);
+  const token = getGistToken();
+  if(!token){ setSyncBadge('setup'); return; }
+  syncTimer = setTimeout(()=>pushToGist(token), 1500);
+}
+
+async function pushToGist(token){
+  if(isSyncing) return;
+  isSyncing = true;
+  setSyncBadge('syncing');
+  try {
+    const body = JSON.stringify({files:{[GIST_FILE]:{content: JSON.stringify(DB)}}});
+    const r = await fetch(GIST_API, {
+      method:'PATCH',
+      headers:{'Authorization':'token '+token,'Content-Type':'application/json'},
+      body
+    });
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    setSyncBadge('connected');
+  } catch(e){
+    setSyncBadge('offline');
+    console.warn('Gist push error:',e);
+  }
+  isSyncing = false;
+}
+
+async function pullFromGist(token){
+  setSyncBadge('syncing');
+  try {
+    const r = await fetch(GIST_API+'?t='+Date.now(), {
+      headers:{'Authorization':'token '+token}
+    });
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const data = await r.json();
+    const content = data.files[GIST_FILE]?.content;
+    if(content){
+      const remote = JSON.parse(content);
+      DB = remote;
+      localStorage.setItem('tawfiq_db', JSON.stringify(DB));
+    } else {
+      // Gist empty → push current local data
+      await pushToGist(token);
+    }
+    setSyncBadge('connected');
+    return true;
+  } catch(e){
+    setSyncBadge('offline');
+    console.warn('Gist pull error:',e);
+    return false;
   }
 }
 
@@ -1260,87 +1298,56 @@ function refreshAllViews(){
   refreshInvList(); populateCustomerDropdown(); populateSupplierDropdown(); populateCashDropdowns();
 }
 
-function startFirestoreListener(){
-  if(fbUnsubscribe) fbUnsubscribe();
-  fbUnsubscribe = fbDB.doc(FB_DOC).onSnapshot(snap=>{
-    if(snap.exists){
-      const remote = snap.data();
-      DB = remote;
-      localStorage.setItem('tawfiq_db', JSON.stringify(DB));
-      refreshAllViews();
-      setSyncBadge('connected');
-    }
-  }, err=>{ console.warn('Firestore listener error:',err); setSyncBadge('offline'); });
+// Poll for updates every 30 seconds (so both users see live changes)
+function startSyncPolling(){
+  setInterval(async ()=>{
+    const token = getGistToken();
+    if(!token || isSyncing) return;
+    const ok = await pullFromGist(token);
+    if(ok) refreshAllViews();
+  }, 30000);
 }
 
+// ===== FIREBASE MODAL FUNCTIONS (reused for Gist UI) =====
 function connectFirebase(){
-  const raw = document.getElementById('fb-config-input').value.trim();
-  let cfg = null;
-  try {
-    // extract object literal from pasted code
-    const match = raw.match(/\{[\s\S]*\}/);
-    if(!match) throw new Error('لم يتم العثور على الكود');
-    cfg = eval('(' + match[0] + ')');
-    if(!cfg.projectId) throw new Error('projectId غير موجود');
-  } catch(e){
-    const box = document.getElementById('fb-status-box');
-    box.style.background='#fef2f2'; box.style.border='1px solid #fca5a5'; box.style.color='#b91c1c';
-    box.textContent = '❌ خطأ في الكود: ' + e.message;
-    box.style.display='block'; return;
+  const token = document.getElementById('fb-config-input').value.trim();
+  if(!token || token.length < 20){
+    showFbStatus('❌ أدخل التوكن الصحيح (يبدأ بـ ghp_ أو gho_)', 'error');
+    return;
   }
-  localStorage.setItem('tawfiq_fb_config', JSON.stringify(cfg));
-  initFirebase(cfg, true);
+  localStorage.setItem('tawfiq_gist_token', token);
+  document.getElementById('fb-config-input').value = '';
+  activateSync(token, true);
 }
 
-function initFirebase(cfg, showFeedback){
-  try {
-    if(fbApp) { try{ fbApp.delete(); }catch(e){} }
-    fbApp = firebase.initializeApp(cfg, 'tawfiq-app-'+Date.now());
-    fbDB = fbApp.firestore();
-    setSyncBadge('syncing');
-
-    // First fetch then listen
-    fbDB.doc(FB_DOC).get().then(snap=>{
-      if(snap.exists){
-        DB = snap.data();
-        localStorage.setItem('tawfiq_db', JSON.stringify(DB));
-        refreshAllViews();
-      } else {
-        // First time: upload current local data
-        fbDB.doc(FB_DOC).set(JSON.parse(JSON.stringify(DB)));
-      }
-      startFirestoreListener();
-      setSyncBadge('connected');
-      if(showFeedback){
-        const box = document.getElementById('fb-status-box');
-        box.style.background='#f0fdf4'; box.style.border='1px solid #86efac'; box.style.color='#15803d';
-        box.textContent = '✅ تم الربط بنجاح! البيانات الآن مشتركة بين كل الأجهزة.';
-        box.style.display='block';
-        document.getElementById('fb-project-id-display').textContent = cfg.projectId;
-        document.getElementById('fb-saved-info').style.display='block';
-        document.getElementById('fb-config-input').value = '';
-      }
-    }).catch(e=>{
-      setSyncBadge('offline');
-      if(showFeedback){
-        const box = document.getElementById('fb-status-box');
-        box.style.background='#fef2f2'; box.style.border='1px solid #fca5a5'; box.style.color='#b91c1c';
-        box.textContent = '❌ فشل الاتصال: ' + e.message + '\nتأكد من إنشاء Firestore Database في مشروعك.';
-        box.style.display='block';
-      }
-    });
-  } catch(e){
-    setSyncBadge('offline');
-    if(showFeedback) alert('خطأ: '+e.message);
+async function activateSync(token, showFeedback){
+  const ok = await pullFromGist(token);
+  if(ok){
+    refreshAllViews();
+    if(showFeedback){
+      showFbStatus('✅ تم الربط بنجاح! البيانات الآن مشتركة بين كل الأجهزة 🎉', 'success');
+      document.getElementById('fb-saved-info').style.display='block';
+    }
+    startSyncPolling();
+  } else {
+    if(showFeedback) showFbStatus('❌ فشل الاتصال - تحقق من التوكن وأعد المحاولة', 'error');
   }
+}
+
+function showFbStatus(msg, type){
+  const box = document.getElementById('fb-status-box');
+  if(type==='success'){
+    box.style.background='#f0fdf4'; box.style.border='1px solid #86efac'; box.style.color='#15803d';
+  } else {
+    box.style.background='#fef2f2'; box.style.border='1px solid #fca5a5'; box.style.color='#b91c1c';
+  }
+  box.textContent = msg;
+  box.style.display='block';
 }
 
 function disconnectFirebase(){
-  if(!confirm('هل تريد قطع الاتصال بالسحابة؟ البيانات ستبقى محفوظة محلياً فقط.')) return;
-  if(fbUnsubscribe) fbUnsubscribe();
-  if(fbApp) { try{ fbApp.delete(); }catch(e){} }
-  fbApp = null; fbDB = null; fbUnsubscribe = null;
-  localStorage.removeItem('tawfiq_fb_config');
+  if(!confirm('هل تريد إيقاف المزامنة؟ البيانات ستبقى محفوظة محلياً.')) return;
+  localStorage.removeItem('tawfiq_gist_token');
   setSyncBadge('setup');
   document.getElementById('fb-saved-info').style.display='none';
   document.getElementById('fb-status-box').style.display='none';
@@ -1349,16 +1356,25 @@ function disconnectFirebase(){
 
 // ===== INIT =====
 loadDB();
-// Auto-connect if config was saved before
+// Auto-connect: check URL hash for token (for brother's first visit)
 (function(){
-  const saved = localStorage.getItem('tawfiq_fb_config');
-  if(saved){
-    try{
-      const cfg = JSON.parse(saved);
-      document.getElementById('fb-project-id-display').textContent = cfg.projectId;
-      document.getElementById('fb-saved-info').style.display='block';
-      initFirebase(cfg, false);
-    }catch(e){ setSyncBadge('setup'); }
+  // Check if URL has #token=...
+  const hash = window.location.hash;
+  const hashMatch = hash.match(/[#&]token=([^&]+)/);
+  if(hashMatch && hashMatch[1].length > 10){
+    const token = hashMatch[1];
+    localStorage.setItem('tawfiq_gist_token', token);
+    // Clean URL (remove token from address bar)
+    history.replaceState(null,'',window.location.pathname);
+  }
+
+  const token = getGistToken();
+  if(token){
+    const si = document.getElementById('fb-saved-info');
+    if(si) si.style.display='block';
+    activateSync(token, false);
+  } else {
+    setSyncBadge('setup');
   }
 })();
 document.getElementById('current-date').textContent = new Date().toLocaleDateString('ar-LY',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
