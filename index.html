@@ -867,40 +867,51 @@ hr.section-divider{border:none;border-top:1px dashed var(--gray-light);margin:16
 <div class="modal-overlay" id="modal-firebase">
   <div class="modal" style="max-width:560px;">
     <div class="modal-header">
-      <h3>☁️ إعداد المزامنة السحابية</h3>
+      <h3 id="fb-modal-title">☁️ المزامنة السحابية</h3>
       <button class="modal-close" onclick="closeModal('modal-firebase')">✕</button>
     </div>
     <div class="card-body" style="padding:24px;">
-      <div id="fb-status-box" style="margin-bottom:16px;padding:12px 16px;border-radius:8px;background:#f0fdf4;border:1px solid #86efac;color:#15803d;display:none;"></div>
 
-      <p style="margin-bottom:16px;line-height:1.8;color:#374151;">
-        النظام جاهز للمزامنة السحابية عبر <strong>GitHub</strong>. أدخل التوكن أدناه مرة واحدة فقط وستتزامن البيانات بين كل الأجهزة تلقائياً.
-      </p>
-
-      <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:16px;margin-bottom:20px;font-size:13px;line-height:2.2;">
-        <b>🔑 كيف تحصل على التوكن:</b><br>
-        1️⃣ اذهب إلى: <a href="https://github.com/settings/tokens/new" target="_blank" style="color:#1a56a0;font-weight:bold;">github.com/settings/tokens/new</a><br>
-        2️⃣ في <b>"Note"</b> اكتب: <code style="background:#e0f2fe;padding:2px 6px;border-radius:4px;">tawfiq-store</code><br>
-        3️⃣ في <b>"Expiration"</b> اختر: <b>No expiration</b><br>
-        4️⃣ ضع علامة ✅ على <b>gist</b> فقط<br>
-        5️⃣ اضغط <b>"Generate token"</b> → انسخ التوكن والصقه هنا
+      <!-- حالة: متصل -->
+      <div id="fb-panel-connected" style="display:none;text-align:center;padding:20px 0;">
+        <div style="font-size:60px;margin-bottom:12px;">☁️✅</div>
+        <h3 style="color:#15803d;margin-bottom:8px;">المزامنة تعمل بنجاح!</h3>
+        <p style="color:#6b7280;margin-bottom:20px;line-height:1.8;">البيانات تتزامن تلقائياً بين جهازك وجهاز أخوك.<br>أي تغيير يُحفظ على السحابة فوراً.</p>
+        <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:12px;margin-bottom:20px;font-size:13px;color:#15803d;">
+          🔄 يتزامن كل 30 ثانية تلقائياً
+        </div>
+        <button class="btn btn-outline" onclick="closeModal('modal-firebase')" style="margin-left:8px;">إغلاق</button>
+        <button class="btn btn-danger btn-sm" style="margin-top:8px;" onclick="disconnectFirebase()">⚠️ قطع الاتصال</button>
       </div>
 
-      <div class="form-group" style="margin-bottom:16px;">
-        <label>الصق التوكن هنا (يبدأ بـ ghp_):</label>
-        <textarea id="fb-config-input" rows="3" style="font-family:monospace;font-size:13px;direction:ltr;padding:10px;border:1px solid #d1d5db;border-radius:8px;width:100%;resize:none;" placeholder="ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"></textarea>
+      <!-- حالة: غير متصل - نموذج الإدخال -->
+      <div id="fb-panel-setup">
+        <div id="fb-status-box" style="margin-bottom:16px;padding:12px 16px;border-radius:8px;display:none;"></div>
+        <p style="margin-bottom:16px;line-height:1.8;color:#374151;">
+          أدخل التوكن مرة واحدة فقط وستتزامن البيانات بين كل الأجهزة تلقائياً.
+        </p>
+        <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:16px;margin-bottom:20px;font-size:13px;line-height:2.2;">
+          <b>🔑 خطوات الحصول على التوكن:</b><br>
+          1️⃣ افتح: <a href="https://github.com/settings/tokens/new" target="_blank" style="color:#1a56a0;font-weight:bold;">github.com/settings/tokens/new</a><br>
+          2️⃣ في <b>Note</b> اكتب: <code style="background:#e0f2fe;padding:2px 6px;border-radius:4px;">tawfiq-store</code><br>
+          3️⃣ في <b>Expiration</b> اختر: <b>No expiration</b><br>
+          4️⃣ ضع ✅ على <b>gist</b> فقط → اضغط <b>Generate token</b><br>
+          5️⃣ انسخ التوكن والصقه هنا
+        </div>
+        <div class="form-group" style="margin-bottom:16px;">
+          <label>الصق التوكن هنا:</label>
+          <textarea id="fb-config-input" rows="2" style="font-family:monospace;font-size:13px;direction:ltr;padding:10px;border:1px solid #d1d5db;border-radius:8px;width:100%;resize:none;" placeholder="ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"></textarea>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="connectFirebase()">🔗 ربط وتزامن الآن</button>
+          <button class="btn btn-outline" onclick="closeModal('modal-firebase')">إغلاق</button>
+        </div>
+        <div id="fb-saved-info" style="margin-top:16px;display:none;">
+          <hr style="margin:12px 0;">
+          <p style="color:#6b7280;font-size:12px;">✅ التوكن محفوظ — جاري إعادة الاتصال...</p>
+        </div>
       </div>
 
-      <div class="btn-group">
-        <button class="btn btn-primary" onclick="connectFirebase()">🔗 ربط وتزامن الآن</button>
-        <button class="btn btn-outline" onclick="closeModal('modal-firebase')">إغلاق</button>
-      </div>
-
-      <div id="fb-saved-info" style="margin-top:16px;display:none;">
-        <hr style="margin:16px 0;">
-        <p style="color:#6b7280;font-size:12px;">✅ التوكن محفوظ — البيانات تتزامن تلقائياً بين كل الأجهزة</p>
-        <button class="btn btn-danger btn-sm" style="margin-top:8px;" onclick="disconnectFirebase()">⚠️ قطع الاتصال وحذف الإعداد</button>
-      </div>
     </div>
   </div>
 </div>
@@ -1324,14 +1335,27 @@ async function activateSync(token, showFeedback){
   const ok = await pullFromGist(token);
   if(ok){
     refreshAllViews();
-    if(showFeedback){
-      showFbStatus('✅ تم الربط بنجاح! البيانات الآن مشتركة بين كل الأجهزة 🎉', 'success');
-      document.getElementById('fb-saved-info').style.display='block';
-    }
+    showConnectedPanel();
     startSyncPolling();
+    if(showFeedback) closeModal('modal-firebase');
   } else {
     if(showFeedback) showFbStatus('❌ فشل الاتصال - تحقق من التوكن وأعد المحاولة', 'error');
+    showSetupPanel();
   }
+}
+
+function showConnectedPanel(){
+  const cp = document.getElementById('fb-panel-connected');
+  const sp = document.getElementById('fb-panel-setup');
+  if(cp) cp.style.display='block';
+  if(sp) sp.style.display='none';
+}
+
+function showSetupPanel(){
+  const cp = document.getElementById('fb-panel-connected');
+  const sp = document.getElementById('fb-panel-setup');
+  if(cp) cp.style.display='none';
+  if(sp) sp.style.display='block';
 }
 
 function showFbStatus(msg, type){
@@ -1349,8 +1373,7 @@ function disconnectFirebase(){
   if(!confirm('هل تريد إيقاف المزامنة؟ البيانات ستبقى محفوظة محلياً.')) return;
   localStorage.removeItem('tawfiq_gist_token');
   setSyncBadge('setup');
-  document.getElementById('fb-saved-info').style.display='none';
-  document.getElementById('fb-status-box').style.display='none';
+  showSetupPanel();
   closeModal('modal-firebase');
 }
 
@@ -1404,6 +1427,13 @@ function showSection(id){
 // ===== MODAL =====
 function openModal(id){
   document.getElementById(id).classList.add('open');
+  if(id==='modal-firebase'){
+    // أظهر الـ panel الصحيح حسب حالة الاتصال
+    const token = getGistToken();
+    const badge = document.getElementById('sync-badge');
+    const isConnected = badge && badge.textContent.includes('متصل');
+    if(token && isConnected){ showConnectedPanel(); } else { showSetupPanel(); }
+  }
   if(id==='modal-sale'){
     populateCustomerDropdown(); refreshInvList();
     document.getElementById('s-num').value='INV-'+DB.nextSaleNum;
